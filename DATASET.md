@@ -4,7 +4,7 @@
 
 The curated dataset for Tracker contains:
 - 9,780 total sequences
-- 9,758 sequences
+- 9,758 AMASS sequences
 - 22 LAFAN1 sequences
 
 The curated dataset for RobotMDAR contains:
