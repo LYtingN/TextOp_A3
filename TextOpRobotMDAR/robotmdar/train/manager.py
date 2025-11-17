@@ -3,7 +3,8 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
-
+import errno
+import shutil
 import torch
 import torch.nn as nn
 from loguru import logger
@@ -725,8 +726,16 @@ class DARManager(BaseManager, GeometryLoss):
                 self.ckpt.vae = str(maybe_vae_path)
                 logger.warning(f"VAE checkpoint path not provided, using the searched one: {self.ckpt.vae}")
             if self.save_dir.exists():
-                # Hard Link, not soft link. It should be more safe
-                os.link(self.ckpt.vae, cache_vae_path)
+                try:
+                    # Hard Link, not soft link. It should be more safe
+                    os.link(self.ckpt.vae, cache_vae_path)
+                except OSError as e:
+                    # If self.ckpt.vae and cache_vae_path lie in different filesystem,
+                    # it will raise error.
+                    if e.errno in (errno.EXDEV, errno.EPERM, errno.EACCES):
+                        shutil.copy2(self.ckpt.vae, cache_vae_path)
+                    else:
+                        raise
                 logger.info(f"VAE cached to {cache_vae_path}")
                 vae_src_path = self.save_dir / "vae_src.log"
                 with open(vae_src_path, "w") as f:
