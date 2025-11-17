@@ -59,9 +59,14 @@ DATAFLAGS="data.weighted_sample=true data.datadir=./dataset/${DATADIR} data.acti
 ```
 
 ### Inference
+
+We have provided some pretrained checkpoints:
+ * `TextOpRobotMDAR/logs/pretrained/checkpoint/ckpt_200000.pth` is the ckpt of dar.
+ * `TextOpRobotMDAR/logs/pretrained/checkpoint/vae.pth` is the ckpt of mvae.
+
 #### 1. Run Online Motion Generation with DAR:
 ```bash
-robotmdar --config-name=loop_dar ckpt.dar=/path/to/dar/ckpt_300000.pth guidance_scale=5.0 ${DATAFLAGS}
+robotmdar --config-name=loop_dar ckpt.dar=/path/to/dar/ckpt_200000.pth guidance_scale=5.0 ${DATAFLAGS}
 ```
 
 #### 2. Run Inference on text-motion pairs from the dataset.
@@ -69,7 +74,7 @@ robotmdar --config-name=loop_dar ckpt.dar=/path/to/dar/ckpt_300000.pth guidance_
 ```bash
 robotmdar --config-name=vis_mvae ckpt.vae=/path/to/mvae/ckpt_200000.pth ${DATAFLAGS}
 
-robotmdar --config-name=vis_dar ckpt.dar=/path/to/dar/ckpt_300000.pth guidance_scale=5.0 ${DATAFLAGS}
+robotmdar --config-name=vis_dar ckpt.dar=/path/to/dar/ckpt_200000.pth guidance_scale=5.0 ${DATAFLAGS}
 
 ```
 
@@ -120,6 +125,11 @@ python -c "import rsl_rl;print(rsl_rl)" # Verify installation
 ```
 
 ### Evaluation
+
+We have provided a pretrained checkpoint:
+* `TextOpTracker/logs/rsl_rl/Pretrained/checkpoints/model_75000.pt` is the pretrained policy that can be loaded in IsaacLab.
+* `TextOpTracker/logs/rsl_rl/Pretrained/checkpoints/latest.onnx` is exported ONNX version.
+
 #### IsaacLab Evaluation
 - Change `/path/to/experiment/model_100000.pt` to be policy checkpoint.
 - Change `/path/to/motion` to be your motion name, e.g. `Data10k-open/homejrhangmr_dataset_pbhc_contact_maskACCADFemale1General_c3dA1-Stand_posespkl`.
