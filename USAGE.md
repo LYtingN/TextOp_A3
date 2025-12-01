@@ -154,6 +154,7 @@ You can deploy this policy in MuJoCo or on the real robot.
 
 
 ```bash
+# `$ pip install mujoco-python-viewer` If `mujoco_viewer` not found.
 python scripts/deploy_mujoco.py --motion_path=/path/to/motion.npz --policy_path=/path/to/policy.onnx
 ```
 

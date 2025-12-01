@@ -1,6 +1,7 @@
 import re
 import time
 import mujoco, mujoco_viewer, mujoco.viewer
+# `$ pip install mujoco-python-viewer` If `mujoco_viewer` not found.
 import numpy as np
 import torch
 from isaaclab.utils.math import matrix_from_quat, subtract_frame_transforms
@@ -188,22 +189,15 @@ def get_joint_default_pos(joint_name):
     return 0.0  # 默认值为0
 
 
-isaaclab_to_mujoco_reindex = [
-    isaaclab_joint_names.index(name) for name in mujoco_joint_names
-]
-mujoco_to_isaaclab_reindex = [
-    mujoco_joint_names.index(name) for name in isaaclab_joint_names
-]
+isaaclab_to_mujoco_reindex = [isaaclab_joint_names.index(name) for name in mujoco_joint_names]
+mujoco_to_isaaclab_reindex = [mujoco_joint_names.index(name) for name in isaaclab_joint_names]
 joint_names = mujoco_joint_names
 kps = [get_param(name, stiffness_dict) for name in joint_names]
 kds = [get_param(name, damping_dict) for name in joint_names]
 kps = np.array(kps, dtype=np.float32)
 kds = np.array(kds, dtype=np.float32)
-action_scale = np.array([get_action_scale(name) for name in joint_names],
-                        dtype=np.float32)
-default_angles = np.array(
-    [get_joint_default_pos(name) for name in mujoco_joint_names],
-    dtype=np.float32)
+action_scale = np.array([get_action_scale(name) for name in joint_names], dtype=np.float32)
+default_angles = np.array([get_joint_default_pos(name) for name in mujoco_joint_names], dtype=np.float32)
 
 print("isaaclab_to_mujoco_reindex")
 print(isaaclab_to_mujoco_reindex)
@@ -259,9 +253,7 @@ def __fix__add_marker_to_scene(self, marker):
             else:
                 g.label = value
         elif hasattr(g, key):
-            raise ValueError(
-                "mjtGeom has attr {} but type {} is invalid".format(
-                    key, type(value)))
+            raise ValueError("mjtGeom has attr {} but type {} is invalid".format(key, type(value)))
         else:
             raise ValueError("mjtGeom doesn't have field %s" % key)
 
@@ -283,25 +275,23 @@ def update_joint_visualization(viewer, motion_loader, t):
 
     # Update spheres for each body (excluding the first one which is pelvis)
     for i in range(0, len(body_pos)):
-        viewer.add_marker(pos=body_pos[i],
-                          size=[0.02, 0.02, 0.02],
-                          rgba=[0.8, 0.5, 0.3, 1],
-                          type=mujoco.mjtGeom.mjGEOM_SPHERE,
-                          label="")
+        viewer.add_marker(
+            pos=body_pos[i],
+            size=[0.02, 0.02, 0.02],
+            rgba=[0.8, 0.5, 0.3, 1],
+            type=mujoco.mjtGeom.mjGEOM_SPHERE,
+            label=""
+        )
 
     # Update anchor body sphere (larger) - use torso_link position
-    anchor_pos = body_pos[
-        motion_loader.anchor_body_index]  # torso_link position
-    viewer.add_marker(pos=anchor_pos,
-                      size=[0.05, 0.05, 0.05],
-                      rgba=[0.8, 0.5, 0.3, 1],
-                      type=mujoco.mjtGeom.mjGEOM_SPHERE,
-                      label="")
+    anchor_pos = body_pos[motion_loader.anchor_body_index]  # torso_link position
+    viewer.add_marker(
+        pos=anchor_pos, size=[0.05, 0.05, 0.05], rgba=[0.8, 0.5, 0.3, 1], type=mujoco.mjtGeom.mjGEOM_SPHERE, label=""
+    )
 
 
 # ====== MotionLoader 类（参考 isaaclab） ======
 class MotionLoader:
-
     def __init__(self, motion_file):
         print(motion_file)
         data = np.load(motion_file)
@@ -366,8 +356,7 @@ def quat_rotate_inverse_np(q: np.ndarray, v: np.ndarray) -> np.ndarray:
         c = q_vec * dot_product * 2.0
     else:
         # For general case: use Einstein summation
-        dot_product = np.expand_dims(np.einsum('...i,...i->...', q_vec, v),
-                                     axis=-1)
+        dot_product = np.expand_dims(np.einsum('...i,...i->...', q_vec, v), axis=-1)
         c = q_vec * dot_product * 2.0
 
     return a - b + c
@@ -404,34 +393,26 @@ def motion_anchor_pos_b_future(sim_data, motion_loader, t):
         return np.zeros(15, dtype=np.float32)  # 3 * 5 = 15
 
     # Get robot anchor pose
-    robot_pos = sim_data.body(
-        motion_loader.anchor_body_name).xpos.copy().reshape(1, 3)
-    robot_quat = sim_data.body(
-        motion_loader.anchor_body_name).xquat.copy().reshape(1, 4)
+    robot_pos = sim_data.body(motion_loader.anchor_body_name).xpos.copy().reshape(1, 3)
+    robot_quat = sim_data.body(motion_loader.anchor_body_name).xquat.copy().reshape(1, 4)
 
     # Get future motion anchor poses - batch process like Isaac Lab
     future_positions = []
     future_orientations = []
     for i in range(motion_loader.future_steps):
         step_idx = min(t + i, motion_loader.T - 1)
-        ref_pos = motion_loader.body_pos[step_idx][
-            motion_loader.anchor_body_index].reshape(1, 3)
-        ref_quat = motion_loader.body_ori[step_idx][
-            motion_loader.anchor_body_index].reshape(1, 4)
+        ref_pos = motion_loader.body_pos[step_idx][motion_loader.anchor_body_index].reshape(1, 3)
+        ref_quat = motion_loader.body_ori[step_idx][motion_loader.anchor_body_index].reshape(1, 4)
         future_positions.append(ref_pos)
         future_orientations.append(ref_quat)
 
     # Stack to create [future_steps, 1, 3] then reshape to [future_steps, 3]
-    future_anchor_pos_w = np.stack(future_positions,
-                                   axis=0).squeeze(1)  # [5, 3]
-    future_anchor_quat_w = np.stack(future_orientations,
-                                    axis=0).squeeze(1)  # [5, 4]
+    future_anchor_pos_w = np.stack(future_positions, axis=0).squeeze(1)  # [5, 3]
+    future_anchor_quat_w = np.stack(future_orientations, axis=0).squeeze(1)  # [5, 4]
 
     # Expand robot anchor for broadcasting: [future_steps, 3] and [future_steps, 4]
-    robot_anchor_pos_w_exp = robot_pos.repeat(motion_loader.future_steps,
-                                              axis=0)  # [5, 3]
-    robot_anchor_quat_w_exp = robot_quat.repeat(motion_loader.future_steps,
-                                                axis=0)  # [5, 4]
+    robot_anchor_pos_w_exp = robot_pos.repeat(motion_loader.future_steps, axis=0)  # [5, 3]
+    robot_anchor_quat_w_exp = robot_quat.repeat(motion_loader.future_steps, axis=0)  # [5, 4]
 
     # Transform all future steps at once
     pos_b, _ = subtract_frame_transforms(
@@ -451,33 +432,25 @@ def motion_anchor_ori_b_future(sim_data, motion_loader, t):
         return np.zeros(30, dtype=np.float32)  # 6 * 5 = 30
 
     # Get robot anchor pose
-    robot_pos = sim_data.body(
-        motion_loader.anchor_body_name).xpos.copy().reshape(1, 3)
-    robot_quat = sim_data.body(
-        motion_loader.anchor_body_name).xquat.copy().reshape(1, 4)
+    robot_pos = sim_data.body(motion_loader.anchor_body_name).xpos.copy().reshape(1, 3)
+    robot_quat = sim_data.body(motion_loader.anchor_body_name).xquat.copy().reshape(1, 4)
 
     # Get future motion anchor orientations - batch process like Isaac Lab
     future_positions = []
     future_orientations = []
     for i in range(motion_loader.future_steps):
         step_idx = min(t + i, motion_loader.T - 1)
-        ref_pos = motion_loader.body_pos[step_idx][
-            motion_loader.anchor_body_index].reshape(1, 3)
-        ref_quat = motion_loader.body_ori[step_idx][
-            motion_loader.anchor_body_index].reshape(1, 4)
+        ref_pos = motion_loader.body_pos[step_idx][motion_loader.anchor_body_index].reshape(1, 3)
+        ref_quat = motion_loader.body_ori[step_idx][motion_loader.anchor_body_index].reshape(1, 4)
         future_positions.append(ref_pos)
         future_orientations.append(ref_quat)
     # Stack to create [future_steps, 1, 3] then reshape to [future_steps, 3]
-    future_anchor_pos_w = np.stack(future_positions,
-                                   axis=0).squeeze(1)  # [5, 3]
-    future_anchor_quat_w = np.stack(future_orientations,
-                                    axis=0).squeeze(1)  # [5, 4]
+    future_anchor_pos_w = np.stack(future_positions, axis=0).squeeze(1)  # [5, 3]
+    future_anchor_quat_w = np.stack(future_orientations, axis=0).squeeze(1)  # [5, 4]
 
     # Expand robot anchor for broadcasting: [future_steps, 3] and [future_steps, 4]
-    robot_anchor_pos_w_exp = robot_pos.repeat(motion_loader.future_steps,
-                                              axis=0)  # [5, 3]
-    robot_anchor_quat_w_exp = robot_quat.repeat(motion_loader.future_steps,
-                                                axis=0)  # [5, 4]
+    robot_anchor_pos_w_exp = robot_pos.repeat(motion_loader.future_steps, axis=0)  # [5, 3]
+    robot_anchor_quat_w_exp = robot_quat.repeat(motion_loader.future_steps, axis=0)  # [5, 4]
 
     # Transform all future steps at once
     pos_b, ori_b = subtract_frame_transforms(
@@ -499,10 +472,8 @@ def motion_anchor_ori_b_future(sim_data, motion_loader, t):
 def robot_body_pos_b(sim_data, motion_loader, t):
     """Robot body positions in body frame"""
     # Get robot anchor pose
-    robot_anchor_pos = sim_data.body(
-        motion_loader.anchor_body_name).xpos.copy().reshape(1, 3)
-    robot_anchor_quat = sim_data.body(
-        motion_loader.anchor_body_name).xquat.copy().reshape(1, 4)
+    robot_anchor_pos = sim_data.body(motion_loader.anchor_body_name).xpos.copy().reshape(1, 3)
+    robot_anchor_quat = sim_data.body(motion_loader.anchor_body_name).xquat.copy().reshape(1, 4)
 
     # Get all robot body poses
     robot_body_positions = []
@@ -515,16 +486,11 @@ def robot_body_pos_b(sim_data, motion_loader, t):
         robot_body_orientations.append(body_quat)
 
     robot_body_pos = np.concatenate(robot_body_positions, axis=0)  # [14, 3]
-    robot_body_quat = np.concatenate(robot_body_orientations,
-                                     axis=0)  # [14, 4]
+    robot_body_quat = np.concatenate(robot_body_orientations, axis=0)  # [14, 4]
 
     # Transform to body frame - expand robot_anchor to match robot_body shape
-    robot_anchor_pos_expanded = robot_anchor_pos.repeat(len(
-        motion_loader.body_names),
-                                                        axis=0)  # [14, 3]
-    robot_anchor_quat_expanded = robot_anchor_quat.repeat(len(
-        motion_loader.body_names),
-                                                          axis=0)  # [14, 4]
+    robot_anchor_pos_expanded = robot_anchor_pos.repeat(len(motion_loader.body_names), axis=0)  # [14, 3]
+    robot_anchor_quat_expanded = robot_anchor_quat.repeat(len(motion_loader.body_names), axis=0)  # [14, 4]
 
     pos_b, _ = subtract_frame_transforms(
         torch.from_numpy(robot_anchor_pos_expanded).float(),
@@ -539,10 +505,8 @@ def robot_body_pos_b(sim_data, motion_loader, t):
 def robot_body_ori_b(sim_data, motion_loader, t):
     """Robot body orientations in body frame"""
     # Get robot anchor pose
-    robot_anchor_pos = sim_data.body(
-        motion_loader.anchor_body_name).xpos.copy().reshape(1, 3)
-    robot_anchor_quat = sim_data.body(
-        motion_loader.anchor_body_name).xquat.copy().reshape(1, 4)
+    robot_anchor_pos = sim_data.body(motion_loader.anchor_body_name).xpos.copy().reshape(1, 3)
+    robot_anchor_quat = sim_data.body(motion_loader.anchor_body_name).xquat.copy().reshape(1, 4)
 
     # Get all robot body poses
     robot_body_positions = []
@@ -555,16 +519,11 @@ def robot_body_ori_b(sim_data, motion_loader, t):
         robot_body_orientations.append(body_quat)
 
     robot_body_pos = np.concatenate(robot_body_positions, axis=0)  # [14, 3]
-    robot_body_quat = np.concatenate(robot_body_orientations,
-                                     axis=0)  # [14, 4]
+    robot_body_quat = np.concatenate(robot_body_orientations, axis=0)  # [14, 4]
 
     # Transform to body frame - expand robot_anchor to match robot_body shape
-    robot_anchor_pos_expanded = robot_anchor_pos.repeat(len(
-        motion_loader.body_names),
-                                                        axis=0)  # [14, 3]
-    robot_anchor_quat_expanded = robot_anchor_quat.repeat(len(
-        motion_loader.body_names),
-                                                          axis=0)  # [14, 4]
+    robot_anchor_pos_expanded = robot_anchor_pos.repeat(len(motion_loader.body_names), axis=0)  # [14, 3]
+    robot_anchor_quat_expanded = robot_anchor_quat.repeat(len(motion_loader.body_names), axis=0)  # [14, 4]
 
     _, ori_b = subtract_frame_transforms(
         torch.from_numpy(robot_anchor_pos_expanded).float(),
@@ -732,19 +691,12 @@ def pd_control(target_q, q, kp, target_dq, dq, kd):
 if __name__ == "__main__":
     VIEW_MOTION = False
 
-    parser = argparse.ArgumentParser(
-        description="Deploy MuJoCo simulation with motion tracking")
-    parser.add_argument(
-        "--motion_path",
-        type=str,
-        default=
-        "",
-        help="Path to motion file (.npz)")
+    parser = argparse.ArgumentParser(description="Deploy MuJoCo simulation with motion tracking")
+    parser.add_argument("--motion_path", type=str, default="", help="Path to motion file (.npz)")
     parser.add_argument(
         "--policy_path",
         type=str,
-        default=
-        "",
+        default="",
         help="Path to policy file (.onnx)",
     )
 
@@ -807,15 +759,12 @@ if __name__ == "__main__":
     start = time.time()
     while viewer.is_alive and time.time() - start < simulation_duration:
         step_start = time.time()
-        tau = pd_control(target_dof_pos, d.qpos[7:], kps, np.zeros_like(kds),
-                         d.qvel[6:], kds)
+        tau = pd_control(target_dof_pos, d.qpos[7:], kps, np.zeros_like(kds), d.qvel[6:], kds)
         if VIEW_MOTION:
             d.qpos[:3] = motion_loader.body_pos[inner_counter][0]
             d.qpos[3:7] = motion_loader.body_ori[inner_counter][0]
-            d.qpos[7:] = motion_loader.joint_pos[inner_counter][
-                isaaclab_to_mujoco_reindex]
-            d.qvel[6:] = motion_loader.joint_vel[inner_counter][
-                isaaclab_to_mujoco_reindex]
+            d.qpos[7:] = motion_loader.joint_pos[inner_counter][isaaclab_to_mujoco_reindex]
+            d.qvel[6:] = motion_loader.joint_vel[inner_counter][isaaclab_to_mujoco_reindex]
         else:
             d.ctrl[:] = tau
 
@@ -833,8 +782,7 @@ if __name__ == "__main__":
             action = output[0].squeeze()
 
             # transform action to target_dof_pos
-            target_dof_pos = action[
-                isaaclab_to_mujoco_reindex] * action_scale + default_angles
+            target_dof_pos = action[isaaclab_to_mujoco_reindex] * action_scale + default_angles
 
             inner_counter += 1
 
