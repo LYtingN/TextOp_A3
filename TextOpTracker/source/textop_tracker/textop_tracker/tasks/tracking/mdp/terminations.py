@@ -4,8 +4,6 @@ import torch
 from typing import TYPE_CHECKING
 from typing import Callable
 
-import isaaclab.utils.math as math_utils
-
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
@@ -16,26 +14,31 @@ from isaaclab.envs.mdp.terminations import joint_pos_out_of_limit, joint_vel_out
 from textop_tracker.tasks.tracking.mdp import MotionCommand
 from textop_tracker.tasks.tracking.mdp.rewards import _get_body_indexes
 
-@torch.jit.script
-def quat_apply_inverse(quat: torch.Tensor, vec: torch.Tensor) -> torch.Tensor:
-    """Apply an inverse quaternion rotation to a vector.
+try:
+    from isaaclab.utils.math import quat_apply_inverse
+except ImportError:
 
-    Args:
-        quat: The quaternion in (w, x, y, z). Shape is (..., 4).
-        vec: The vector in (x, y, z). Shape is (..., 3).
+    @torch.jit.script
+    def quat_apply_inverse(quat: torch.Tensor, vec: torch.Tensor) -> torch.Tensor:
+        """Apply an inverse quaternion rotation to a vector.
 
-    Returns:
-        The rotated vector in (x, y, z). Shape is (..., 3).
-    """
-    # store shape
-    shape = vec.shape
-    # reshape to (N, 3) for multiplication
-    quat = quat.reshape(-1, 4)
-    vec = vec.reshape(-1, 3)
-    # extract components from quaternions
-    xyz = quat[:, 1:]
-    t = xyz.cross(vec, dim=-1) * 2
-    return (vec - quat[:, 0:1] * t + xyz.cross(t, dim=-1)).view(shape)
+        Args:
+            quat: The quaternion in (w, x, y, z). Shape is (..., 4).
+            vec: The vector in (x, y, z). Shape is (..., 3).
+
+        Returns:
+            The rotated vector in (x, y, z). Shape is (..., 3).
+        """
+        # store shape
+        shape = vec.shape
+        # reshape to (N, 3) for multiplication
+        quat = quat.reshape(-1, 4)
+        vec = vec.reshape(-1, 3)
+        # extract components from quaternions
+        xyz = quat[:, 1:]
+        t = xyz.cross(vec, dim=-1) * 2
+        return (vec - quat[:, 0:1] * t + xyz.cross(t, dim=-1)).view(shape)
+
 
 def termination_cond_on_pfail(term_fn: Callable) -> Callable:
     def wrapper(env: ManagerBasedRLEnv, pfail_threshold: float, *args) -> torch.Tensor:
