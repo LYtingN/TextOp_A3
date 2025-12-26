@@ -89,7 +89,7 @@ def process_pkl_file(input_path, output_path):
 
         interpolated_trans, interpolated_rot, interpolated_dof = interpolate_motion_data_slerp(root_trans_offset, root_rot, dof)
         
-        contact_mask = cal_contact_mask(dof, root_trans_offset, root_rot)
+        contact_mask = cal_contact_mask(interpolated_dof, interpolated_trans, interpolated_rot)
 
         processed_data = {}
 
