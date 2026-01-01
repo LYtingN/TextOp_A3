@@ -242,7 +242,7 @@ TextOpDeploy supports:
 - `unitree_mujoco` simulator. A more realistic method for sim2sim validation.
 - Real G1 robot deployment
 
-> To run in the `unitree_mujoco` simulator, it's assumed you have a game joystick like xbox or switch. If you don't have it, you can still deploy the policy in real robot with unitree's joystick.
+> The `unitree_mujoco` simulator emulates the joystick interface used on the real robot. You can connect an external game joystick (e.g., Xbox or Switch), or use the keyboard to send surrogate joystick commands to the simulator.
 
 
 ### Installation for Sim2Sim
@@ -260,14 +260,17 @@ pip install colcon-common-extensions empy==3.3.4 catkin_pkg lark-parser netiface
 - Install `TextOpDeploy/src/unitree_ros2` following [unitree_ros2](https://github.com/unitreerobotics/unitree_ros2). Remember to modify `TextOpDeploy/src/unitree_ros2/setup.sh` to set the net interface correctly.
 
 - Install `unitree_sdk2`, `mujoco` and `TextOpDeploy/src/unitree_mujoco`, following [unitree_mujoco's README](TextOpDeploy/src/unitree_mujoco/readme.md). Only **C++ Simulator** is needed. This version includes communication hooks for `textop_ctrl`.
+    > Note: the joystick interface is defined in `TextOpDeploy/src/unitree_mujoco/simulate/src/physics_joystick.h`. 
+    > For input configuration, set the device path and type in `TextOpDeploy/src/unitree_mujoco/simulate/config.yaml`: use `/dev/input/js*` as device path for an external joystick, or set the device type to `keyboard` and specify the keyboard device by `/dev/input/event*`. The correct device path can be identified using `sudo evtest` for keyboard or `sudo jstest` for joystick.
 
 - After installing the above packages, you should see the G1's ros2 topics from mujoco simulator.
 ```bash
-export ROS_DOMAIN_ID=10 
+export ROS_DOMAIN_ID=10
 
 # Open one terminal, activate your environment
 cd TextOpDeploy/src/unitree_mujoco/simulate/build
-./unitree_mujoco -r g1 -n lo -i 10 # Choose the correct net interface and ROS DOMAIN ID
+sudo ./unitree_mujoco -r g1 -n lo -i 10 # Choose the correct net interface and ROS DOMAIN ID
+#  `sudo` is required only when using the keyboard joystick
 
 # Open another terminal, activate your environment
 ros2 topic list
@@ -318,7 +321,7 @@ ros2 launch textop_ctrl textop_onnx_controller.launch.py \
 # Open terminal-3, activate the environment
 # This program send an example motion file to the policy as a trigger.
 # The example `motion.npz` is corresponding to https://github.com/TeleHuman/PBHC/blob/main/example/motion_data/Horse-stance_pose.pkl
-python src/byd_ctrl/scripts/npz_motion_publisher.py --mode single TextOpDeploy/src/textop_ctrl/models/motion.npz
+python src/textop_ctrl/scripts/npz_motion_publisher.py --mode single src/textop_ctrl/models/motion.npz
 
 # Joystick: Press start and then press A. The Tracker and RobotMDAR will begin.
 ```
@@ -331,10 +334,10 @@ python src/byd_ctrl/scripts/npz_motion_publisher.py --mode single TextOpDeploy/s
 
 # Open terminal-3, start RobotMDAR: activate the ros workspace and `textop` python environment
 # Modify the config of RobotMDAR in `TextOpDeploy/src/textop_ctrl/config/rmdar_config.yaml` to choose the RobotMDAR checkpoint and inference parameters.
-python src/byd_ctrl/scripts/rmdar.py 
+python src/textop_ctrl/scripts/rmdar.py 
 
 # (Optional) Open terminal-3, start a motion watcher to visualize the generated reference motion.
-python src/byd_ctrl/scripts/motion_watcher.py 
+python src/textop_ctrl/scripts/motion_watcher.py 
 
 # In your joystick, first press `start` and then press `A`, the Tracker and RobotMDAR should start in the same times. Enter some words to RobotMDAR to instruct the Robot.
 
@@ -361,7 +364,6 @@ Installation
 mkdir TextOpDeploy/src/textop_ctrl/thirdparty && cd TextOpDeploy/src/textop_ctrl/thirdparty
 wget https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-linux-aarch64-1.22.0.tgz 
 tar -xvf onnxruntime-linux-aarch64-1.22.0.tgz 
-# Manually modify TextOp\TextOpDeploy\src\textop_ctrl\CMakeLists.txt to set `ONNXRUNTIME_ROOT_DIR` as `${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/onnxruntime-linux-aarch64-1.22.0`
 
 # Set the environment variable
 export LD_LIBRARY_PATH=$(pwd)/src/textop_ctrl/thirdparty/onnxruntime-linux-aarch64-1.22.0/lib:$LD_LIBRARY_PATH
@@ -379,7 +381,7 @@ source install/setup.bash
 # In both PC and G1: 
 export ROS_DOMAIN_ID=0 
 ros2 topic list
-## Your should find a list of G1-related topic
+## You should find a list of G1-related topic
 ```
 
 Startup Process
@@ -398,7 +400,7 @@ ros2 launch textop_ctrl textop_onnx_controller.launch.py \
 ```
 4. In PC, start the `rmdar` and `motion_watcher` the same as in Sim2Sim. You can also visualize the state of real robot by:
 ```bash
-python src/byd_ctrl/scripts/show_realrobot.py 
+python src/textop_ctrl/scripts/show_realrobot.py 
 ```
 5. Press `Start`. G1 will smoothly go to a default pose. Place it on flat ground and it should stand still.
 6. Press `A`. The Tracker and RobotMDAR policy will start inference in the same time. G1 will track the reference motion corresponding to default command `stand`. 

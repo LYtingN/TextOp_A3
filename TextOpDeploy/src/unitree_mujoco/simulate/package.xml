@@ -5,7 +5,7 @@
   <version>1.0.0</version>
   <description>Unitree MuJoCo Simulation with ROS2 Reset Support</description>
   
-  <maintainer>Weiji Xie</maintainer>
+  <maintainer email="xieweiji249@sjtu.edu.cn">Weiji Xie</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

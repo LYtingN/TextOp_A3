@@ -462,8 +462,10 @@ class MotionDAR(Node):
         # Calculate counter based on absolute time since toggle started
         if self._toggle_time >= 0:
             time0 = self.get_clock().now()
-            current_time = time0.seconds + time0.nanoseconds / 1e9
+            # current_time = time0.seconds + time0.nanoseconds / 1e9   # deprecated usage
+            current_time = time0.seconds_nanoseconds()[0] + time0.seconds_nanoseconds()[1] / 1e9
             absolute_elapsed = current_time - self._toggle_time
+            
             self._counter = int(np.floor(absolute_elapsed / self.dt))
 
     def _gen_motion(self):

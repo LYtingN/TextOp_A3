@@ -46,7 +46,7 @@ class TextOpOnnxController : public rclcpp::Node
             this->declare_parameter("config_path", ".../src/textop_ctrl/config/g1_29dof.yaml");
         std::string onnx_model_path =
             this->declare_parameter("onnx_model_path", ".../src/textop_ctrl/models/policy.onnx");
-        std::string sportmode_topic = this->declare_parameter("sportmode_topic", "/sportmodestate");
+        std::string sportmode_topic = this->declare_parameter("sportmode_topic", "/odommodestate");
         std::string mjc_reset_topic = this->declare_parameter("mjc_reset_topic", "/mjc/reset");
 
         RCLCPP_INFO(this->get_logger(), "Loading config from: %s", config_path.c_str());
@@ -73,11 +73,26 @@ class TextOpOnnxController : public rclcpp::Node
         motion_t_ = 0;
         lock_t_ = false;
 
-        // Initialize target positions with default angles
+        // Initialize target positions and last action with default angles
+
+        const auto& isaaclab_to_mujoco =
+            observation_computer_->get_isaaclab_to_mujoco_reindex();
         for (int i = 0; i < 29; ++i)
         {
             target_dof_pos_[i] =
-                static_cast<float>(observation_computer_->default_angles_[i]);  // MuJoCo order
+                static_cast<float>(start_pose[i]);  // MuJoCo order
+            // target_dof_pos_[i] =
+            //     static_cast<float>(observation_computer_->default_angles_[i]);  // MuJoCo order
+
+
+            int isaaclab_idx = isaaclab_to_mujoco[i];
+
+            action_[isaaclab_idx] = (start_pose[i] - static_cast<float>(observation_computer_->default_angles_[i]))/static_cast<float>(config_->action_scale[i]);
+            // static_cast<float>(config_->action_scale[i]) +
+                    // static_cast<float>(observation_computer_->default_angles_[i])
+            // std::cout << "action[isaaclab_idx]: " << gamepad_.lx << std::endl;
+
+            // action_.resize(config_->num_actions, 0.0f);  // IsaacLab order
         }
 
         // Initialize low command - make sure all 35 motors are initialized
@@ -96,8 +111,13 @@ class TextOpOnnxController : public rclcpp::Node
             sportmode_topic, 10,
             [this](unitree_go::msg::SportModeState::SharedPtr msg)
             {
-                std::array<float, 3> pos{msg->position[0], msg->position[1], msg->position[2]};
+                std::array<float, 3> pos{0,0,0};
+                // std::array<float, 3> pos{msg->position[0], msg->position[1], msg->position[2]};
+                // std::array<float, 3> vel{0,0,0};
                 std::array<float, 3> vel{msg->velocity[0], msg->velocity[1], msg->velocity[2]};
+                // std::cout << "DEBUG: Received odom pos: [" << pos[0] << ", " << pos[1] << ", " << pos[2]
+                //           << "], \tvel: [" << vel[0] << ", " << vel[1] << ", " << vel[2] << "]"
+                //           << std::endl;
                 if (observation_computer_)
                 {
                     observation_computer_->set_odometry(pos, vel);
@@ -167,6 +187,30 @@ class TextOpOnnxController : public rclcpp::Node
         // std::cout << "gamepad_.L1: " << gamepad_.L1.pressed << std::endl;
         // std::cout << "LowStateHandler:" << tick_ << std::endl;
     }
+
+    std::vector<float> start_pose = {
+        -0.2f, 0.0,0.0,0.42f,-0.23f,0.0f,
+        -0.2f, 0.0,0.0,0.42f,-0.23f,0.0f,
+        0.0f, 0.0, 0.0,
+        0.0, 0.2f, 0.15f, 1.2f, 0.0f, 0.0f, 0.0f,
+        0.0, -0.2f, -0.15f, 1.2f, 0.0f, 0.0f, 0.0f, 
+    };
+    std::vector<float> start_kp ={
+        400,400,400,400,400,400,
+        400,400,400,400,400,400,
+        400,400,400,
+        20, 20, 20, 20, 20, 20, 20,
+        20, 20, 20, 20, 20, 20, 20,
+    };
+    std::vector<float> start_kd ={
+        10,10,10,10,10,10,
+        10,10,10,10,10,10,
+        10,10,10,
+        0.5,0.5,0.5,0.5,0.5,0.5,0.5,
+        0.5,0.5,0.5,0.5,0.5,0.5,0.5,   
+    };
+
+
 
     bool CheckInitialize()
     {
@@ -247,11 +291,14 @@ class TextOpOnnxController : public rclcpp::Node
             for (int i = 0; i < 29; ++i)
             {
                 target_dof_pos_[i] = latest_low_state_->motor_state[i].q * (1 - alpha) +
-                                     static_cast<float>(observation_computer_->default_angles_[i]) *
+                                     static_cast<float>(start_pose[i]) *
                                          alpha;  // MuJoCo order
+                // target_dof_pos_[i] = latest_low_state_->motor_state[i].q * (1 - alpha) +
+                //                      static_cast<float>(observation_computer_->default_angles_[i]) *
+                //                          alpha;  // MuJoCo order
             }
 
-            send_motor_commands();
+            send_motor_commands_start_pose();
         }
         if ((is_initialized_ == 3))
         {
@@ -271,11 +318,11 @@ class TextOpOnnxController : public rclcpp::Node
             for (int i = 0; i < 29; ++i)
             {
                 target_dof_pos_[i] = latest_low_state_->motor_state[i].q * (1 - alpha) +
-                                     static_cast<float>(observation_computer_->default_angles_[i]) *
+                                     static_cast<float>(start_pose[i]) *
                                          alpha;  // MuJoCo order
             }
 
-            send_motor_commands();
+            send_motor_commands_start_pose();
         }
 
         return false;
@@ -362,6 +409,34 @@ class TextOpOnnxController : public rclcpp::Node
         }
     }
 
+    void send_motor_commands_start_pose()
+    {
+        // Safety check before sending commands
+        if (!sanity_check())
+        {
+            return;  // Exit early if safety check fails
+        }
+
+        // Update low command with target positions and gains
+        for (int i = 0; i < 29; ++i)
+        {
+            int motor_idx = i;
+            // i: MuJoCo order
+            if (motor_idx < 35)
+            {  // Ensure valid motor index
+                low_cmd_.motor_cmd[motor_idx].q = target_dof_pos_[i];
+                low_cmd_.motor_cmd[motor_idx].dq = 0.0f;   // Target velocity
+                low_cmd_.motor_cmd[motor_idx].tau = 0.0f;  // Will be calculated by PD control
+                low_cmd_.motor_cmd[motor_idx].kp = static_cast<float>(start_kp[i]);
+                low_cmd_.motor_cmd[motor_idx].kd = static_cast<float>(start_kd[i]);
+            }
+        }
+
+        // Calculate CRC and publish
+        get_crc(low_cmd_);
+        lowcmd_publisher_->publish(low_cmd_);
+    }
+
     void send_motor_commands()
     {
         // Safety check before sending commands
@@ -430,7 +505,7 @@ class TextOpOnnxController : public rclcpp::Node
             }
 
             // Check if velocity is too large
-            if (std::abs(current_dq) > 20.0f)
+            if (std::abs(current_dq) > 25.0f)
             {
                 RCLCPP_ERROR(this->get_logger(),
                              "dq %d is too large.\n"

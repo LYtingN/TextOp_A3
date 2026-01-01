@@ -32,7 +32,15 @@ find_library(CNPY_LIBRARY cnpy PATHS "${CMAKE_CURRENT_SOURCE_DIR}/../../install/
 
 # Find ONNX Runtime
 # Use the existing ONNX Runtime installation
-set(ONNXRUNTIME_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/onnxruntime-linux-x64-1.22.0" CACHE PATH "ONNX Runtime root directory")
+
+if(SYS_ARCH MATCHES "x86_64|amd64")
+    set(ONNXRUNTIME_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/onnxruntime-linux-x64-1.22.0" CACHE PATH "ONNX Runtime root directory")
+elseif(SYS_ARCH MATCHES "aarch64|arm64")
+    set(ONNXRUNTIME_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/onnxruntime-linux-aarch64-1.22.0" CACHE PATH "ONNX Runtime root directory")
+else()
+    message(FATAL_ERROR "Unsupported architecture: ${CMAKE_SYSTEM_PROCESSOR}")
+endif()
+
 
 if(NOT EXISTS "${ONNXRUNTIME_ROOT_DIR}")
     message(FATAL_ERROR "ONNX Runtime not found at ${ONNXRUNTIME_ROOT_DIR}. Please set ONNXRUNTIME_ROOT_DIR to the correct path.")

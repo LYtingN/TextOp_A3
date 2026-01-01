@@ -310,6 +310,13 @@ std::vector<float> ObservationComputer::motion_anchor_pos_b_future(
         pos_b[i * 3 + 0] = pos_b_step[0];
         pos_b[i * 3 + 1] = pos_b_step[1];
         pos_b[i * 3 + 2] = pos_b_step[2];
+
+        if(true){
+            // std::cout<< "MANUAL ZERO \n";
+            pos_b[i * 3 + 0] = 0;
+            pos_b[i * 3 + 1] = 0;
+            pos_b[i * 3 + 2] = 0;
+        }
     }
 
     if (lock_xy_mode_)
@@ -332,6 +339,15 @@ std::vector<float> ObservationComputer::motion_anchor_pos_b_future(
         // std::cout << " locked xy mode | last frame pos_b: [" << pos_b[pos_b.size() - 3] << ", "
         //           << pos_b[pos_b.size() - 2] << ", " << pos_b[pos_b.size() - 1] << "]" <<
         //           std::endl;
+    }
+
+    if (false)
+    {
+        for (int i = motion_loader_->future_steps-1; i >= 0 ; i--)
+        {
+            pos_b[i * 3 + 0] -= pos_b[0];
+            pos_b[i * 3 + 1] -= pos_b[1];
+        }
     }
 
     return pos_b;

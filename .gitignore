@@ -7,7 +7,7 @@ TextOpDeploy/src/unitree_mujoco/unitree_robots
 logs_eval
 
 
-
+*.tmp*
 .zjk
 # Byte-compiled / optimized / DLL files
 __pycache__/

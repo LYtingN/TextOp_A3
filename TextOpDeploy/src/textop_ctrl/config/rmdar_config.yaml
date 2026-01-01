@@ -10,8 +10,8 @@ dar:
   use_full_sample: true
   guidance_scale: 5.0
   device: "cuda"
-  datadir: ".../RobotMDAR/dataset/BABEL-AMASS-ROBOT-23dof-FULL"
-  skeleton_assetRoot: ".../description/robots/g1"
+  datadir: ".../TextOpRobotMDAR/dataset/BABEL-AMASS-ROBOT-23dof-FULL-50fps"
+  skeleton_assetRoot: ".../TextOpRobotMDAR/description/robots/g1"
 
 # Motion block configuration
 motion_block:

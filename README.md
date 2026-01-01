@@ -6,6 +6,7 @@
 
 
 ## News
+- **[2026-01]** Updated `TextOpDeploy` modules to fix several bugs and add support for keyboard-based joystick in `unitree_mujoco`. You can now run sim2sim experiments in `TextOpDeploy` more smoothly.  
 - \[2025-11\] We release the preview version of TextOp, including **code**, **pretrained models** and **demo**.
 
 

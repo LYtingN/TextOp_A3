@@ -9,6 +9,7 @@
 
 #include "param.h"
 #include "physics_joystick.h"
+#include "reset_dds_wrapper.hpp"
 
 #define MOTOR_SENSOR_NUM 3
 
@@ -34,6 +35,12 @@ class UnitreeSDK2BridgeBase
             {
                 joystick = std::make_shared<SwitchJoystick>(param::config.joystick_device,
                                                             param::config.joystick_bits);
+            }
+            else if (param::config.joystick_type == "keyboard")
+            {
+                joystick = std::make_shared<EventKeyboardJoystick>(
+                    param::config.joystick_device   // e.g.: /dev/input/event3
+                );
             }
             else
             {
@@ -111,7 +118,7 @@ class UnitreeSDK2BridgeBase
     }
 };
 
-template <typename LowCmd_t, typename LowState_t>
+template <typename LowCmd_t, typename LowState_t, typename Reset_t>
 class RobotBridge : public UnitreeSDK2BridgeBase
 {
     using HighState_t = unitree::robot::go2::publisher::SportModeState;
@@ -121,9 +128,11 @@ class RobotBridge : public UnitreeSDK2BridgeBase
     RobotBridge(mjModel *model, mjData *data) : UnitreeSDK2BridgeBase(model, data)
     {
         lowcmd = std::make_shared<LowCmd_t>("rt/lowcmd");
+        reset = std::make_shared<Reset_t>("rt/mjc/reset");
+        reset->set_timeout_ms(50);
         lowstate = std::make_unique<LowState_t>();
         lowstate->joystick = joystick;
-        highstate = std::make_unique<HighState_t>();
+        highstate = std::make_unique<HighState_t>("rt/odommodestate");
         wireless_controller = std::make_unique<WirelessController_t>();
         wireless_controller->joystick = joystick;
         thread_ = std::make_shared<unitree::common::RecurrentThread>(
@@ -141,11 +150,68 @@ class RobotBridge : public UnitreeSDK2BridgeBase
         // lowcmd
         {
             std::lock_guard<std::mutex> lock(lowcmd->mutex_);
-            for (int i(0); i < num_motor_; i++)
+
+            if (lowcmd->isTimeout())
             {
-                auto &m = lowcmd->msg_.motor_cmd()[i];
-                mj_data_->ctrl[i] = m.tau() + m.kp() * (m.q() - mj_data_->sensordata[i]) +
-                                    m.kd() * (m.dq() - mj_data_->sensordata[i + num_motor_]);
+                for (int i = 0; i < mj_model_->nu; i++)
+                {
+                    mj_data_->ctrl[i] = 0;
+                }
+            }
+            else
+            {
+                for (int i(0); i < num_motor_; i++)
+                {
+                    auto &m = lowcmd->msg_.motor_cmd()[i];
+                    mj_data_->ctrl[i] = m.tau() + m.kp() * (m.q() - mj_data_->sensordata[i]) +
+                                        m.kd() * (m.dq() - mj_data_->sensordata[i + num_motor_]);
+                }
+            }
+        }
+        // reset
+        {
+            std::lock_guard<std::mutex> lock(reset->mutex_);
+            auto new_sec = reset->msg_.sec();
+            auto new_nanosec = reset->msg_.nanosec();
+
+            bool new_reset = (new_sec != last_reset_sec_ || new_nanosec != last_reset_nanosec_);
+
+            double time_changed = (double)new_sec + (double)new_nanosec * 1e-9 -
+                                  ((double)last_reset_sec_ + (double)last_reset_nanosec_ * 1e-9);
+
+            // std::cout << "time_changed: " << time_changed << std::endl;
+            // std::cout << "new_reset: " << new_reset << std::endl;
+
+            if (new_reset && (time_changed > 0.1))
+            {
+                // 更新记录的时间
+                last_reset_sec_ = new_sec;
+                last_reset_nanosec_ = new_nanosec;
+
+                // 执行reset操作
+                for (int i = 0; i < mj_model_->nu; i++)
+                {
+                    mj_data_->ctrl[i] = 0;
+                }
+                for (int i = 0; i < mj_model_->nv; i++)
+                {
+                    mj_data_->qvel[i] = 0;
+                    // mj_data_->sensordata[i + num_motor_] = 0;
+                    // mj_data_->sensordata[i + 2 * num_motor_] = 0;
+                }
+                for (int i = 0; i < mj_model_->nq; i++)
+                {
+                    mj_data_->qpos[i] = 0;
+                    // mj_data_->sensordata[i] = 0;
+                }
+                mj_data_->qpos[2] = 0.79;
+                mj_data_->qpos[3] = 1.0;
+                // mj_forward(mj_model_, mj_data_);
+
+                // mj_resetData(mj_model_, mj_data_);
+
+                std::cout << "reset done at time: " << last_reset_sec_ << "s "
+                          << last_reset_nanosec_ << "ns" << std::endl;
             }
         }
 
@@ -153,6 +219,7 @@ class RobotBridge : public UnitreeSDK2BridgeBase
         if (lowstate->trylock())
         {
             lowstate->msg_.tick() += 1;
+            // std::cout << "lowstate tick: " << lowstate->msg_.tick() << std::endl;
             for (int i(0); i < num_motor_; i++)
             {
                 lowstate->msg_.motor_state()[i].q() = mj_data_->sensordata[i];
@@ -213,9 +280,11 @@ class RobotBridge : public UnitreeSDK2BridgeBase
             highstate->msg_.position()[0] = mj_data_->sensordata[dim_motor_sensor_ + 10];
             highstate->msg_.position()[1] = mj_data_->sensordata[dim_motor_sensor_ + 11];
             highstate->msg_.position()[2] = mj_data_->sensordata[dim_motor_sensor_ + 12];
+            // world frame pos
             highstate->msg_.velocity()[0] = mj_data_->sensordata[dim_motor_sensor_ + 13];
             highstate->msg_.velocity()[1] = mj_data_->sensordata[dim_motor_sensor_ + 14];
             highstate->msg_.velocity()[2] = mj_data_->sensordata[dim_motor_sensor_ + 15];
+            // world frame linvel
             highstate->unlockAndPublish();
         }
         // wireless_controller
@@ -229,12 +298,16 @@ class RobotBridge : public UnitreeSDK2BridgeBase
     std::unique_ptr<WirelessController_t> wireless_controller;
     std::shared_ptr<LowCmd_t> lowcmd;
     std::unique_ptr<LowState_t> lowstate;
+    std::shared_ptr<Reset_t> reset;
 
    private:
     unitree::common::RecurrentThreadPtr thread_;
+    // 添加成员变量记录上一次reset的时间
+    int32_t last_reset_sec_ = 0;
+    uint32_t last_reset_nanosec_ = 0;
 };
 
 using Go2Bridge = RobotBridge<unitree::robot::go2::subscription::LowCmd,
-                              unitree::robot::go2::publisher::LowState>;
-using G1Bridge =
-    RobotBridge<unitree::robot::g1::subscription::LowCmd, unitree::robot::g1::publisher::LowState>;
+                              unitree::robot::go2::publisher::LowState, ResetSubs>;
+using G1Bridge = RobotBridge<unitree::robot::g1::subscription::LowCmd,
+                             unitree::robot::g1::publisher::LowState, ResetSubs>;
