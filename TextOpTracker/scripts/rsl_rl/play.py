@@ -22,6 +22,13 @@ parser.add_argument("--num_envs", type=int, default=None, help="Number of enviro
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--resume_path", type=str, default=None, help="Path to the resume checkpoint.")
 parser.add_argument("--motion_file", type=str, default=None, help="Path to the motion file.")
+parser.add_argument(
+    "--max_steps",
+    type=int,
+    default=None,
+    help="Maximum number of env steps to run before exiting play loop. "
+    "If not set, runs until you close the simulator (or until --video_length when --video is enabled).",
+)
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
 # append AppLauncher cli args
@@ -122,7 +129,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         # env_cfg.commands.motion.motion_file = str(Path("./artifacts") / Path(args_cli.motion_file) / "motion.npz")
         # env_cfg, agent_cfg = load_config(resume_path)
 
-        motion_files = glob.glob(str(Path("./artifacts") / Path(args_cli.motion_file) / "motion.npz"))
+        motion_files = glob.glob(str(Path("./artifacts") / f"{args_cli.motion_file}.npz"))
         if not motion_files:
             raise FileNotFoundError(f"No motion.npz found in {Path('./artifacts') / Path(args_cli.motion_file)}")
         env_cfg.commands.motion.motion_files = motion_files  # List[str]
@@ -190,11 +197,13 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             actions = policy(obs)
             # env stepping
             obs, _, _, _ = env.step(actions)
-        if args_cli.video:
-            timestep += 1
-            # Exit the play loop after recording one video
-            if timestep == args_cli.video_length:
-                break
+        timestep += 1
+        # Exit the play loop after recording one video
+        if args_cli.video and timestep >= args_cli.video_length:
+            break
+        # Exit the play loop after max steps
+        if args_cli.max_steps is not None and timestep >= args_cli.max_steps:
+            break
 
     # close the simulator
     env.close()

@@ -31,8 +31,8 @@ from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
 
 # robot config & motion loader
 # from whole_body_tracking.robots.g1 import X2_CYLINDER_CFG
-from whole_body_tracking.robots.A3 import A3_CYLINDER_CFG
-from whole_body_tracking.tasks.tracking.mdp import MotionLoader
+from textop_tracker.robots.a3 import A3_CYLINDER_CFG
+from textop_tracker.tasks.tracking.mdp import MotionLoader
 
 
 @configclass
