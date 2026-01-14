@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import torch
 from collections.abc import Sequence
-
-from isaaclab.actuators import ImplicitActuator, ImplicitActuatorCfg
+import omni.log
+from isaaclab.actuators import ImplicitActuatorCfg,ImplicitActuator
 from isaaclab.utils import DelayBuffer, configclass
 from isaaclab.utils.types import ArticulationActions
 
 
+    
 class DelayedImplicitActuator(ImplicitActuator):
     """Ideal PD actuator with delayed command application.
 
@@ -64,8 +65,17 @@ class DelayedImplicitActuator(ImplicitActuator):
         control_action.joint_positions = self.positions_delay_buffer.compute(control_action.joint_positions)
         control_action.joint_velocities = self.velocities_delay_buffer.compute(control_action.joint_velocities)
         control_action.joint_efforts = self.efforts_delay_buffer.compute(control_action.joint_efforts)
+        # print(control_action.joint_efforts)
+        # control_action.joint_efforts = 0
         # compte actuator model
-        return super().compute(control_action, joint_pos, joint_vel)
+        # return super().compute(control_action, joint_pos, joint_vel)
+        # store approximate torques for reward computation
+        error_pos = control_action.joint_positions - joint_pos
+        error_vel = control_action.joint_velocities - joint_vel
+        self.computed_effort = self.stiffness * error_pos + self.damping * error_vel + control_action.joint_efforts
+        # clip the torques based on the motor limits
+        self.applied_effort = self._clip_effort(self.computed_effort)
+        return control_action        
 
 
 @configclass
@@ -77,5 +87,5 @@ class DelayedImplicitActuatorCfg(ImplicitActuatorCfg):
     min_delay: int = 0
     """Minimum number of physics time-steps with which the actuator command may be delayed. Defaults to 0."""
 
-    max_delay: int = 0
+    max_delay: int = 3
     """Maximum number of physics time-steps with which the actuator command may be delayed. Defaults to 0."""

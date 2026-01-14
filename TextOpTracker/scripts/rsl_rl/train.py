@@ -23,6 +23,12 @@ parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
 parser.add_argument("--motion_file", type=str, required=True, help="The name of the wand registry.")
+parser.add_argument(
+    "--print_joint_names",
+    action="store_true",
+    default=False,
+    help="Print IsaacLab runtime joint order (robot.data.joint_names) once at startup.",
+)
 
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
@@ -83,11 +89,21 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # note: certain randomizations occur in the environment initialization so we set the seed here
     env_cfg.seed = agent_cfg.seed
     env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
-
+    
     motion_files = glob.glob(str(Path("./artifacts") / Path(args_cli.motion_file) / "motion.npz"))
     if not motion_files:
-        raise FileNotFoundError(f"No motion.npz found in {Path('./artifacts') / Path(args_cli.motion_file)}")
+        motion_files = glob.glob(str(Path("./artifacts") / f"{args_cli.motion_file}.npz"))
+    if not motion_files:
+        motion_files = glob.glob(str(Path("./artifacts") / f"{args_cli.motion_file}*.npz"))
+    if not motion_files:
+        raise FileNotFoundError(
+            f"No motion file found matching '{args_cli.motion_file}' in ./artifacts. "
+            f"Tried: ./artifacts/{args_cli.motion_file}/motion.npz, "
+            f"./artifacts/{args_cli.motion_file}.npz, "
+            f"./artifacts/{args_cli.motion_file}*.npz"
+        )
     env_cfg.commands.motion.motion_files = motion_files  # List[str]
+    print(f"[INFO] Found {len(motion_files)} motion file(s): {motion_files}")
 
     # specify directory for logging experiments
     log_root_path = os.path.join("logs", "rsl_rl", agent_cfg.experiment_name)
@@ -101,6 +117,18 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
+
+    # Optional debug: print runtime joint order (this is the order your NPZ joint_pos/joint_vel must follow)
+    if args_cli.print_joint_names:
+        try:
+            # ManagerBasedRLEnv has `.scene` with a `robot` entry
+            robot = env.unwrapped.scene["robot"]  # type: ignore[attr-defined]
+            names = list(robot.data.joint_names)  # type: ignore[attr-defined]
+            print(f"[DEBUG] Runtime joint order (len={len(names)}):")
+            for i, n in enumerate(names):
+                print(f"  {i:02d}: {n}")
+        except Exception as e:
+            print(f"[WARNING] Failed to print joint names: {e}")
     # wrap for video recording
     if args_cli.video:
         video_kwargs = {
