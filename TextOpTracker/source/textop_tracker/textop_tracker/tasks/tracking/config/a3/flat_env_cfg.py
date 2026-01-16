@@ -20,7 +20,7 @@ class A3FlatEnvCfg(TrackingEnvCfg):
 
         self.commands.motion.anchor_body_name = "pelvis_link"
 
-        a3_body_names_keypoints = [
+        self.commands.motion.body_names = [
             "pelvis_link",
             "left_hip_roll_Link",
             "left_knee_Link",
@@ -37,51 +37,4 @@ class A3FlatEnvCfg(TrackingEnvCfg):
             "right_wrist_roll_Link",
         ]
 
-        # a3_body_names_keypoints = [
-        #     "pelvis_link",
-        #     "torso_Link",
-        #     "left_shoulder_pitch_Link",
-        #     "left_shoulder_roll_Link",
-        #     "left_shoulder_yaw_Link",
-        #     "left_elbow_Link",
-        #     "left_wrist_roll_Link",
-        #     "right_shoulder_pitch_Link",
-        #     "right_shoulder_roll_Link",
-        #     "right_shoulder_yaw_Link",
-        #     "right_elbow_Link",
-        #     "right_wrist_roll_Link",
-        #     "left_hip_pitch_Link",
-        #     "left_hip_roll_Link",
-        #     "left_hip_yaw_Link",
-        #     "left_knee_Link",
-        #     "left_ankle_pitch_Link",
-        #     "left_ankle_roll_Link",
-        #     "right_hip_pitch_Link",
-        #     "right_hip_roll_Link",
-        #     "right_hip_yaw_Link",
-        #     "right_knee_Link",
-        #     "right_ankle_pitch_Link",
-        #     "right_ankle_roll_Link",
-        # ]
-
-        self.commands.motion.body_names = a3_body_names_keypoints
-
-        # self.events.base_com.params["asset_cfg"] = SceneEntityCfg("robot", body_names=self.commands.motion.anchor_body_name)
-
-    
-        # self.terminations.ee_body_pos.params["body_names"] =    [
-        #     "left_ankle_roll_Link",
-        #     "right_ankle_roll_Link",
-        #     # "left_wrist_roll_Link",
-        #     # "right_wrist_roll_Link",
-        # ]
      
-
-        # 3) Exclude feet + wrists from undesired contact penalty.
-        # self.rewards.undesired_contacts.params["sensor_cfg"] = SceneEntityCfg(
-        #     "contact_forces",
-        #     body_names=[
-        #         r"^(?!left_ankle_roll_Link$)(?!right_ankle_roll_Link$)(?!left_wrist_roll_Link$)(?!right_wrist_roll_Link$).+$"
-        #     ],
-        # )
-
