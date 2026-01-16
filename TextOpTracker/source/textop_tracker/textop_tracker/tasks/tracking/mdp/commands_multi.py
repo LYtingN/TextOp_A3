@@ -135,7 +135,7 @@ class MultiMotionLoader:
         self.file_lengths = torch.tensor(self.file_lengths,
                                          dtype=torch.long,
                                          device=self.device)
-        self.fps = self.fps_list[0]  # 可以根据需求调整
+        self.fps = self.fps_list[0]  
 
     def get_motion_data_batch(
             self, motion_idx: int, time_steps_start: torch.Tensor,
@@ -178,6 +178,8 @@ class MotionCommand(CommandTerm):
             self.cfg.anchor_body_name)
         self.motion_anchor_body_index = self.cfg.body_names.index(
             self.cfg.anchor_body_name)
+        # print(self.robot_anchor_body_index)
+        print(self.motion_anchor_body_index)
         self.body_indexes = torch.tensor(self.robot.find_bodies(
             self.cfg.body_names, preserve_order=True)[0],
                                          dtype=torch.long,

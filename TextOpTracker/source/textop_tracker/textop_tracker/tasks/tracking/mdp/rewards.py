@@ -151,6 +151,15 @@ def soft_landing_cond_on_pfail(
 ) -> torch.Tensor:
     return reward_cond_on_pfail(soft_landing)(env, pfail_threshold, sensor_cfg)
 
+def body_force(
+    env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg, threshold: float = 500, max_reward: float = 400
+) -> torch.Tensor:
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    reward = contact_sensor.data.net_forces_w[:, sensor_cfg.body_ids, 2].norm(dim=-1)
+    reward[reward < threshold] = 0
+    reward[reward > threshold] -= threshold
+    reward = reward.clamp(min=0, max=max_reward)
+    return reward
 
 def joint_vel_out_of_manual_limit_reward(
     env: ManagerBasedRLEnv, max_velocity: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")

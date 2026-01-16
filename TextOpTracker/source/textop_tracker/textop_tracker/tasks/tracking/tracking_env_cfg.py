@@ -121,17 +121,17 @@ class ObservationsCfg:
 
         # observation terms (order preserved)
         command = ObsTerm(func=mdp.generated_commands, params={"command_name": "motion"})
-        motion_anchor_pos_b = ObsTerm(
-            func=mdp.motion_anchor_pos_b_future,
-            params={"command_name": "motion"},
-            noise=Unoise(n_min=-0.25, n_max=0.25)
-        )
+        # motion_anchor_pos_b = ObsTerm(
+        #     func=mdp.motion_anchor_pos_b_future,
+        #     params={"command_name": "motion"},
+        #     noise=Unoise(n_min=-0.25, n_max=0.25)
+        # )
         motion_anchor_ori_b = ObsTerm(
             func=mdp.motion_anchor_ori_b_future,
             params={"command_name": "motion"},
             noise=Unoise(n_min=-0.05, n_max=0.05)
         )
-        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.5, n_max=0.5))
+        # base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.5, n_max=0.5))
         base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
         joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-0.5, n_max=0.5))
@@ -327,36 +327,36 @@ class EventCfg:
         },
     )
 
-    add_joint_default_pos = EventTerm(
-        func=mdp.randomize_joint_default_pos,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
-            "pos_distribution_params": (-0.01, 0.01),
-            "operation": "add",
-        },
-    )
+    # add_joint_default_pos = EventTerm(
+    #     func=mdp.randomize_joint_default_pos,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
+    #         "pos_distribution_params": (-0.01, 0.01),
+    #         "operation": "add",
+    #     },
+    # )
 
-    base_com = EventTerm(
-        func=mdp.randomize_rigid_body_com,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="torso_link"),
-            "com_range": {
-                "x": (-0.025, 0.025),
-                "y": (-0.05, 0.05),
-                "z": (-0.05, 0.05)
-            },
-        },
-    )
+    # base_com = EventTerm(
+    #     func=mdp.randomize_rigid_body_com,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="torso_link"),
+    #         "com_range": {
+    #             "x": (-0.025, 0.025),
+    #             "y": (-0.05, 0.05),
+    #             "z": (-0.05, 0.05)
+    #         },
+    #     },
+    # )
 
-    # interval
-    push_robot = EventTerm(
-        func=mdp.push_by_setting_velocity,
-        mode="interval",
-        interval_range_s=(1.0, 3.0),
-        params={"velocity_range": VELOCITY_RANGE},
-    )
+    # # interval
+    # push_robot = EventTerm(
+    #     func=mdp.push_by_setting_velocity,
+    #     mode="interval",
+    #     interval_range_s=(1.0, 3.0),
+    #     params={"velocity_range": VELOCITY_RANGE},
+    # )
 
 
 @configclass
@@ -418,65 +418,91 @@ class RewardsCfg:
         weight=-10.0,
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*"])},
     )
+    # undesired_contacts = RewTerm(
+    #     func=mdp.undesired_contacts,
+    #     weight=-0.1,
+    #     params={
+    #         "sensor_cfg":
+    #             SceneEntityCfg(
+    #                 "contact_forces",
+    #                 body_names=[
+    #                     r"^(?!left_ankle_roll_link$)(?!right_ankle_roll_link$)(?!left_wrist_yaw_link$)(?!right_wrist_yaw_link$).+$"
+    #                 ],
+    #             ),
+    #         "threshold":
+    #             1.0,
+    #     },
+    # )
     undesired_contacts = RewTerm(
         func=mdp.undesired_contacts,
         weight=-0.1,
         params={
-            "sensor_cfg":
-                SceneEntityCfg(
-                    "contact_forces",
-                    body_names=[
-                        r"^(?!left_ankle_roll_link$)(?!right_ankle_roll_link$)(?!left_wrist_yaw_link$)(?!right_wrist_yaw_link$).+$"
-                    ],
-                ),
-            "threshold":
-                1.0,
-        },
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces",
+                body_names=['pelvis_link','torso_Link','.*_shoulder_yaw_Link','.*_elbow_Link',
+                '.*_hip_yaw_Link'],
+                # body_names=['pelvis_link'],
+            ),
+            "threshold": 1.0,
+            },
     )
-    feet_force = RewTerm(
-        func=mdp.contact_forces_cond_on_pfail,
-        weight=-0.0,  # -0.05/100
-        params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*ankle_roll.*"),
-            "threshold": 600,
-            "pfail_threshold": 1.0,  # for backward compatibility
-        }
-    )
-    feet_slide = RewTerm(
-        func=mdp.feet_slide_cond_on_pfail,
-        weight=-0.1,  # -0.0
-        params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*ankle_roll.*"),
-            "asset_cfg": SceneEntityCfg("robot", body_names=".*ankle_roll.*"),
-            "pfail_threshold": 0.2,
-        }
-    )
-    soft_landing = RewTerm(
-        func=mdp.soft_landing_cond_on_pfail,
-        weight=-1e-5,  # -0.0
-        params={
-            "sensor_cfg": SceneEntityCfg("contact_forces"),
-            "pfail_threshold": 0.2,
-        }
-    )
+    # feet_force = RewTerm(
+    #     func=mdp.contact_forces_cond_on_pfail,
+    #     weight=-0.0,  # -0.05/100
+    #     params={
+    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*ankle_roll.*"),
+    #         "threshold": 600,
+    #         "pfail_threshold": 1.0,  # for backward compatibility
+    #     }
+    # )
+    # feet_slide = RewTerm(
+    #     func=mdp.feet_slide_cond_on_pfail,
+    #     weight=-0.1,  # -0.0
+    #     params={
+    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*ankle_roll.*"),
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*ankle_roll.*"),
+    #         "pfail_threshold": 0.2,
+    #     }
+    # )
+    # feet_force = RewTerm(
+    #     func=mdp.body_force,
+    #     weight=-1e-3,
+    #     params={
+    #         "sensor_cfg": SceneEntityCfg("contact_forces",             
+    #             body_names=[
+    #             "left_ankle_roll_Link",
+    #             "right_ankle_roll_Link",
+    #         ]),
+    #         "threshold": 540,
+    #         "max_reward": 200,
+    #     },
+    # )
+    # soft_landing = RewTerm(
+    #     func=mdp.soft_landing_cond_on_pfail,
+    #     weight=-1e-5,  # -0.0
+    #     params={
+    #         "sensor_cfg": SceneEntityCfg("contact_forces"),
+    #         "pfail_threshold": 0.2,
+    #     }
+    # )
 
-    overspeed = RewTerm(
-        func=mdp.joint_vel_out_of_manual_limit_cond_on_pfail_reward,
-        weight=-0.1,
-        params={
-            "max_velocity": 20.0,
-            "pfail_threshold": 0.15,
-        },
-    )
+    # overspeed = RewTerm(
+    #     func=mdp.joint_vel_out_of_manual_limit_cond_on_pfail_reward,
+    #     weight=-0.1,
+    #     params={
+    #         "max_velocity": 20.0,
+    #         "pfail_threshold": 0.15,
+    #     },
+    # )
 
-    overeffort = RewTerm(
-        func=mdp.joint_effort_out_of_limit_fixed_cond_on_pfail_reward,
-        weight=-0.1,
-        params={
-            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
-            "pfail_threshold": 0.15,
-        },
-    )
+    # overeffort = RewTerm(
+    #     func=mdp.joint_effort_out_of_limit_fixed_cond_on_pfail_reward,
+    #     weight=-0.1,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
+    #         "pfail_threshold": 0.15,
+    #     },
+    # )
 
 
 @configclass
@@ -502,19 +528,32 @@ class TerminationsCfg:
     ee_body_pos = DoneTerm(
         func=mdp.bad_motion_body_pos_z_only,
         params={
-            "command_name":
-                "motion",
-            "threshold":
-                0.25,
-            "body_names":
-                [
-                    "left_ankle_roll_link",
-                    "right_ankle_roll_link",
-                    "left_wrist_yaw_link",
-                    "right_wrist_yaw_link",
-                ],
+            "command_name": "motion",
+            "threshold": 0.25,
+            "body_names": [
+                "left_ankle_roll_link",
+                "right_ankle_roll_link",
+                "left_wrist_yaw_link",
+                "right_wrist_yaw_link",
+            ],
         },
     )
+    # ee_body_pos = DoneTerm(
+    #     func=mdp.bad_motion_body_pos_z_only,
+    #     params={
+    #         "command_name":
+    #             "motion",
+    #         "threshold":
+    #             0.25,
+    #         "body_names":
+    #             [
+    #                 "left_ankle_roll_link",
+    #                 "right_ankle_roll_link",
+    #                 "left_wrist_yaw_link",
+    #                 "right_wrist_yaw_link",
+    #             ],
+    #     },
+    # )
     # overboundary = DoneTerm(
     #     func=mdp.joint_pos_out_of_limit_cond_on_pfail,
     #     params={

@@ -148,6 +148,22 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # wrap around environment for rsl-rl
     env = RslRlVecEnvWrapper(env)
 
+    # Debug: print observation/action dimensions once at startup
+    try:
+        obs, extras = env.get_observations()
+        num_obs = int(obs.shape[1])
+        num_actions = int(env.num_actions)
+        print(f"[INFO] Obs shape: {tuple(obs.shape)} (num_obs={num_obs}), num_actions={num_actions}")
+        # Optional: show if privileged observations are present
+        obs_dict = extras.get("observations", {}) if isinstance(extras, dict) else {}
+        if isinstance(obs_dict, dict):
+            priv_keys = [k for k in ("critic", "teacher", "rnd_state") if k in obs_dict]
+            if priv_keys:
+                shapes = {k: tuple(obs_dict[k].shape) for k in priv_keys}
+                print(f"[INFO] Extra observation keys: {priv_keys} with shapes {shapes}")
+    except Exception as e:
+        print(f"[WARNING] Failed to print obs/action dimensions: {e}")
+
     # create runner from rsl-rl
     runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device, registry_name=None)
     # write git state to logs
