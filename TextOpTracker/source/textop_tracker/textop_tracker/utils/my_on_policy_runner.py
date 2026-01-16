@@ -54,8 +54,9 @@ class MotionOnPolicyRunner(OnPolicyRunner):
                 wandb.run.use_artifact(self.registry_name)
                 self.registry_name = None
 
-        # For DEBUG:
-        if unwrapped_env.command_manager.get_term("motion").cfg.enable_adaptive_sampling:
+        # For DEBUG (only for multi-motion configs that have adaptive sampling)
+        motion_cfg = unwrapped_env.command_manager.get_term("motion").cfg
+        if getattr(motion_cfg, "enable_adaptive_sampling", False):
             fail_count = unwrapped_env.command_manager.get_term("motion").failed_motion_count.cpu().numpy()
             success_count = unwrapped_env.command_manager.get_term("motion").success_motion_count.cpu().numpy()
             total_count = fail_count + success_count

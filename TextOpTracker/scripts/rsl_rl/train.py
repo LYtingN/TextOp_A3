@@ -102,7 +102,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             f"./artifacts/{args_cli.motion_file}.npz, "
             f"./artifacts/{args_cli.motion_file}*.npz"
         )
-    env_cfg.commands.motion.motion_files = motion_files  # List[str]
+    # 单文件命令版：只取第一条，写入 motion_file 字段
+    env_cfg.commands.motion.motion_file = motion_files[0]
     print(f"[INFO] Found {len(motion_files)} motion file(s): {motion_files}")
 
     # specify directory for logging experiments

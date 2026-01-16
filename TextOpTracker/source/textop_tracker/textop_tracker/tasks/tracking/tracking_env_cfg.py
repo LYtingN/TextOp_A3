@@ -127,7 +127,8 @@ class ObservationsCfg:
         #     noise=Unoise(n_min=-0.25, n_max=0.25)
         # )
         motion_anchor_ori_b = ObsTerm(
-            func=mdp.motion_anchor_ori_b_future,
+            # func=mdp.motion_anchor_ori_b_future,
+            func=mdp.motion_anchor_ori_b,
             params={"command_name": "motion"},
             noise=Unoise(n_min=-0.05, n_max=0.05)
         )
@@ -149,8 +150,10 @@ class ObservationsCfg:
     @configclass
     class PrivilegedCfg(ObsGroup):
         command = ObsTerm(func=mdp.generated_commands, params={"command_name": "motion"})
-        motion_anchor_pos_b = ObsTerm(func=mdp.motion_anchor_pos_b_future, params={"command_name": "motion"})
-        motion_anchor_ori_b = ObsTerm(func=mdp.motion_anchor_ori_b_future, params={"command_name": "motion"})
+        # motion_anchor_pos_b = ObsTerm(func=mdp.motion_anchor_pos_b_future, params={"command_name": "motion"})
+        motion_anchor_pos_b = ObsTerm(func=mdp.motion_anchor_pos_b, params={"command_name": "motion"})
+        # motion_anchor_ori_b = ObsTerm(func=mdp.motion_anchor_ori_b_future, params={"command_name": "motion"})
+        motion_anchor_ori_b = ObsTerm(func=mdp.motion_anchor_ori_b, params={"command_name": "motion"})
         body_pos = ObsTerm(func=mdp.robot_body_pos_b, params={"command_name": "motion"})
         body_ori = ObsTerm(func=mdp.robot_body_ori_b, params={"command_name": "motion"})
         base_lin_vel = ObsTerm(func=mdp.base_lin_vel)
