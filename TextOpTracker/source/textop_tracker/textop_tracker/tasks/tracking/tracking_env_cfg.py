@@ -330,36 +330,36 @@ class EventCfg:
         },
     )
 
-    add_joint_default_pos = EventTerm(
-        func=mdp.randomize_joint_default_pos,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
-            "pos_distribution_params": (-0.01, 0.01),
-            "operation": "add",
-        },
-    )
+    # add_joint_default_pos = EventTerm(
+    #     func=mdp.randomize_joint_default_pos,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
+    #         "pos_distribution_params": (-0.01, 0.01),
+    #         "operation": "add",
+    #     },
+    # )
 
-    base_com = EventTerm(
-        func=mdp.randomize_rigid_body_com,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="torso_Link"),
-            "com_range": {
-                "x": (-0.025, 0.025),
-                "y": (-0.05, 0.05),
-                "z": (-0.05, 0.05)
-            },
-        },
-    )
+    # base_com = EventTerm(
+    #     func=mdp.randomize_rigid_body_com,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="torso_link"),
+    #         "com_range": {
+    #             "x": (-0.025, 0.025),
+    #             "y": (-0.05, 0.05),
+    #             "z": (-0.05, 0.05)
+    #         },
+    #     },
+    # )
 
-    # interval
-    push_robot = EventTerm(
-        func=mdp.push_by_setting_velocity,
-        mode="interval",
-        interval_range_s=(1.0, 3.0),
-        params={"velocity_range": VELOCITY_RANGE},
-    )
+    # # interval
+    # push_robot = EventTerm(
+    #     func=mdp.push_by_setting_velocity,
+    #     mode="interval",
+    #     interval_range_s=(1.0, 3.0),
+    #     params={"velocity_range": VELOCITY_RANGE},
+    # )
 
 
 @configclass
@@ -421,7 +421,21 @@ class RewardsCfg:
         weight=-10.0,
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*"])},
     )
-
+    # undesired_contacts = RewTerm(
+    #     func=mdp.undesired_contacts,
+    #     weight=-0.1,
+    #     params={
+    #         "sensor_cfg":
+    #             SceneEntityCfg(
+    #                 "contact_forces",
+    #                 body_names=[
+    #                     r"^(?!left_ankle_roll_link$)(?!right_ankle_roll_link$)(?!left_wrist_yaw_link$)(?!right_wrist_yaw_link$).+$"
+    #                 ],
+    #             ),
+    #         "threshold":
+    #             1.0,
+    #     },
+    # )
     undesired_contacts = RewTerm(
         func=mdp.undesired_contacts,
         weight=-0.1,
