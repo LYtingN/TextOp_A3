@@ -88,7 +88,7 @@ class CommandsCfg:
     """Command specifications for the MDP."""
 
     motion = mdp.MotionCommandCfg(
-        future_steps=5,  # Future N-step lookahead
+        # future_steps=5,  # Future N-step lookahead
         asset_name="robot",
         resampling_time_range=(1.0e9, 1.0e9),
         debug_vis=True,
